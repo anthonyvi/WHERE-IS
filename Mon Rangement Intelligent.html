@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Mon Rangement Intelligent</title>
+
+    <!-- PWA & Apple Touch Icon Configuration -->
+    <link rel="apple-touch-icon" sizes="180x180" href="icon_4.png">
+    <link rel="icon" type="image/png" href="icon_4.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Mon Rangement">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        .touch-action-manipulation {
+            touch-action: manipulation;
+        }
+        /* Custom scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.03);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0,0,0,0.15);
+            border-radius: 99px;
+        }
+        .glass-header {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+    </style>
+</head>
+<body class="h-full text-slate-800 antialiased pb-24 select-none">
+
+    <!-- Header / Banner PWA -->
+    <header class="sticky top-0 z-30 glass-header border-b border-slate-200/80 px-4 py-3 shadow-sm">
+        <div class="max-w-4xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-200">
+                    <i class="fa-solid font-bold fa-boxes-stacked text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg text-slate-900 leading-tight">Mon Rangement</h1>
+                    <p class="text-xs text-slate-500 font-medium">Organisation & Stockage</p>
+                </div>
+            </div>
+            <button onclick="window.openCreateModal()" class="touch-action-manipulation bg-indigo-600 active:bg-indigo-700 text-white font-semibold text-sm px-4 py-2.5 rounded-xl shadow-sm shadow-indigo-200 flex items-center gap-2 transition hover:bg-indigo-700">
+                <i class="fa-solid fa-plus text-xs"></i>
+                <span>Nouveau Bloc</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Banner d'installation iOS/PWA -->
+    <div id="pwaBanner" class="hidden max-w-4xl mx-auto m-4 p-3.5 bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100 rounded-2xl flex items-center justify-between gap-3 text-xs text-indigo-900 shadow-sm">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                <i class="fa-solid fa-arrow-down-to-bracket"></i>
+            </div>
+            <div>
+                <p class="font-semibold">Installer l'application</p>
+                <p class="text-indigo-700 text-[11px]">Appuyez sur <i class="fa-solid fa-share-nodes px-0.5"></i> puis <strong>"Sur l'écran d'accueil"</strong>.</p>
+            </div>
+        </div>
+        <button onclick="window.dismissPwaBanner()" class="text-indigo-400 hover:text-indigo-700 p-1">
+            <i class="fa-solid fa-xmark text-base"></i>
+        </button>
+    </div>
+
+    <!-- Main Container -->
+    <main class="max-w-4xl mx-auto px-4 pt-4 space-y-4">
+
+        <!-- Barre de recherche et Filtres par catégorie -->
+        <div class="space-y-3">
+            <div class="relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                <input type="text" id="searchInput" oninput="window.renderBlocks()" placeholder="Rechercher un objet, un bloc, une pièce..." 
+                       class="w-full bg-white border border-slate-200 pl-10 pr-4 py-3 rounded-2xl text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition">
+            </div>
+
+            <!-- Filtres (Pills) -->
+            <div id="categoryPills" class="flex gap-2 overflow-x-auto pb-1 pt-0.5 scrollbar-none text-xs font-medium">
+                <!-- Généré dynamiquement -->
+            </div>
+        </div>
+
+        <!-- Statistiques rapides -->
+        <div class="flex items-center justify-between px-1 text-xs text-slate-500 font-medium">
+            <span id="statsCount">0 bloc(s) de rangement</span>
+            <span id="itemsCount">0 objet(s) au total</span>
+        </div>
+
+        <!-- Liste des Blocs de Rangement -->
+        <div id="blocksGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- Rendu dynamique JS -->
+        </div>
+
+        <!-- Etat vide -->
+        <div id="emptyState" class="hidden text-center py-16 px-4 space-y-3">
+            <div class="w-16 h-16 bg-slate-100 text-slate-400 rounded-3xl mx-auto flex items-center justify-center text-2xl">
+                <i class="fa-solid fa-box-open"></i>
+            </div>
+            <h3 class="font-semibold text-slate-700">Aucun bloc de rangement trouvé</h3>
+            <p class="text-xs text-slate-400 max-w-xs mx-auto">Créez votre premier bloc de rangement pour organiser vos objets par lieu et catégorie.</p>
+            <button onclick="window.openCreateModal()" class="touch-action-manipulation inline-flex items-center gap-2 bg-indigo-600 text-white font-medium text-xs px-4 py-2.5 rounded-xl shadow-sm">
+                <i class="fa-solid fa-plus"></i> Créer un bloc
+            </button>
+        </div>
+
+    </main>
+
+    <!-- Modal Création / Édition de Bloc -->
+    <div id="blockModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden transition-opacity duration-200">
+        <div class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95">
+            
+            <!-- Header Modal -->
+            <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <h2 id="modalTitle" class="font-bold text-slate-900 text-base">Nouveau Bloc de Rangement</h2>
+                <button onclick="window.closeBlockModal()" class="w-8 h-8 rounded-full bg-slate-200/60 text-slate-500 flex items-center justify-center hover:bg-slate-200 transition">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+
+            <!-- Body Modal (Scrollable) -->
+            <div class="p-5 overflow-y-auto space-y-5 text-sm">
+                
+                <input type="hidden" id="editBlockId">
+
+                <!-- Nom du bloc -->
+                <div>
+                    <label class="block font-semibold text-slate-700 text-xs mb-1.5">Nom du bloc / Carton *</label>
+                    <input type="text" id="blockTitle" placeholder="Ex: Boîte Vêtements Hiver, Carton Bricolage..." 
+                           class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition">
+                </div>
+
+                <!-- Emplacement & Catégorie -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-700 text-xs mb-1.5">Emplacement / Pièce *</label>
+                        <select id="blockLocation" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition">
+                            <option value="Chambre">Chambre</option>
+                            <option value="Garage">Garage</option>
+                            <option value="Cave">Cave</option>
+                            <option value="Salon">Salon</option>
+                            <option value="Cuisine">Cuisine</option>
+                            <option value="Grenier">Grenier</option>
+                            <option value="Bureau">Bureau</option>
+                            <option value="Dressing">Dressing</option>
+                            <option value="Salle de bain">Salle de bain</option>
+                            <option value="Autre">Autre</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 text-xs mb-1.5">Catégorie d'objets *</label>
+                        <select id="blockCategory" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition">
+                            <option value="Vêtements">Vêtements</option>
+                            <option value="Outillage">Outillage</option>
+                            <option value="Documents">Documents</option>
+                            <option value="Électronique">Électronique</option>
+                            <option value="Jouets & Jeux">Jouets & Jeux</option>
+                            <option value="Cuisine">Cuisine</option>
+                            <option value="Décoration">Décoration</option>
+                            <option value="Livres">Livres</option>
+                            <option value="Souvenirs">Souvenirs</option>
+                            <option value="Divers">Divers</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Position précise -->
+                <div>
+                    <label class="block font-semibold text-slate-700 text-xs mb-1.5">Position précise / Détails</label>
+                    <input type="text" id="blockSubPosition" placeholder="Ex: Étagère du haut, Sous le lit, Armoire de gauche..." 
+                           class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition">
+                </div>
+
+                <!-- Sélecteur de Couleur (20 Choix) -->
+                <div>
+                    <label class="block font-semibold text-slate-700 text-xs mb-2">Couleur du bloc (20 choix)</label>
+                    <div id="colorGrid" class="grid grid-cols-10 gap-2">
+                        <!-- Généré par JS -->
+                    </div>
+                </div>
+
+                <!-- Sélecteur d'Icône (20 Choix) -->
+                <div>
+                    <label class="block font-semibold text-slate-700 text-xs mb-2">Icône représentative (20 choix)</label>
+                    <div id="iconGrid" class="grid grid-cols-10 gap-2 max-h-32 overflow-y-auto p-1 bg-slate-50 border border-slate-200 rounded-xl">
+                        <!-- Généré par JS -->
+                    </div>
+                </div>
+
+                <!-- Liste des articles contenus -->
+                <div>
+                    <label class="block font-semibold text-slate-700 text-xs mb-1.5">Contenu du bloc (séparés par des virgules)</label>
+                    <textarea id="blockItems" rows="3" placeholder="Ex: Pulls en laine, Manteaux, Écharpe rouge, Gants..." 
+                              class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition text-xs"></textarea>
+                </div>
+
+            </div>
+
+            <!-- Footer Modal -->
+            <div class="p-4 border-t border-slate-100 flex items-center justify-end gap-2 bg-slate-50/50">
+                <button type="button" onclick="window.closeBlockModal()" class="px-4 py-2.5 rounded-xl border border-slate-200 font-semibold text-slate-600 hover:bg-slate-100 text-xs transition">
+                    Annuler
+                </button>
+                <button type="button" onclick="window.saveBlock()" class="touch-action-manipulation px-5 py-2.5 rounded-xl bg-indigo-600 active:bg-indigo-700 text-white font-semibold text-xs shadow-sm transition">
+                    Enregistrer le Bloc
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Modal Boîte de Confirmation de Suppression -->
+    <div id="confirmModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white w-full max-w-xs rounded-2xl p-5 text-center shadow-2xl space-y-4">
+            <div class="w-12 h-12 bg-red-100 text-red-600 rounded-full mx-auto flex items-center justify-center text-xl">
+                <i class="fa-solid fa-trash-can"></i>
+            </div>
+            <div>
+                <h3 class="font-bold text-slate-900 text-base">Supprimer ce bloc ?</h3>
+                <p class="text-xs text-slate-500 mt-1">Cette action est définitive et supprimera tout son contenu répertorié.</p>
+            </div>
+            <div class="flex items-center gap-2 pt-2">
+                <button onclick="window.closeConfirmModal()" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-100">
+                    Annuler
+                </button>
+                <button id="btnConfirmDelete" class="flex-1 py-2.5 rounded-xl bg-red-600 active:bg-red-700 text-white text-xs font-semibold shadow-sm">
+                    Supprimer
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- DONNÉES & PALETTES (20 Couleurs & 20 Icônes) ---
+        const COLORS = [
+            "#4f46e5", "#2563eb", "#0284c7", "#0891b2", "#0d9488",
+            "#16a34a", "#65a30d", "#ca8a04", "#d97706", "#ea580c",
+            "#dc2626", "#e11d48", "#db2777", "#c026d3", "#9333ea",
+            "#7c3aed", "#475569", "#334155", "#1e293b", "#0f172a"
+        ];
+
+        const ICONS = [
+            "fa-box", "fa-boxes-stacked", "fa-shirt", "fa-wrench", "fa-folder-open",
+            "fa-laptop", "fa-gamepad", "fa-utensils", "fa-couch", "fa-book",
+            "fa-palette", "fa-suitcase", "fa-gem", "fa-plug", "fa-car",
+            "fa-bicycle", "fa-glasses", "fa-shoe-prints", "fa-pump-soap", "fa-key"
+        ];
+
+        // --- ÉTAT GLOBAL ---
+        let storageBlocks = [];
+        let selectedColor = COLORS[0];
+        let selectedIcon = ICONS[0];
+        let activeCategoryFilter = "Toutes";
+        let pendingDeleteId = null;
+
+        // --- INITIALISATION AU CHARGEMENT DE LA PAGE ---
+        window.onload = function() {
+            loadStorageData();
+            initColorPicker();
+            initIconPicker();
+            renderCategoryPills();
+            renderBlocks();
+            checkPwaStatus();
+        };
+
+        // --- CHARGEMENT DU STORAGE DE SECOURS ---
+        function loadStorageData() {
+            try {
+                const saved = localStorage.getItem('mon_rangement_blocks');
+                if (saved) {
+                    storageBlocks = JSON.parse(saved);
+                } else {
+                    // Données de démonstration
+                    storageBlocks = [
+                        {
+                            id: 'demo-1',
+                            title: 'Boîte Outillage & Bricolage',
+                            location: 'Garage',
+                            category: 'Outillage',
+                            subPosition: 'Étagère de droite - Niveau 2',
+                            color: '#0284c7',
+                            icon: 'fa-wrench',
+                            items: ['Marteau', 'Tournevis cruciforme', 'Perceuse', 'Boîte de vis M4', 'Mètre ruban']
+                        },
+                        {
+                            id: 'demo-2',
+                            title: 'Vêtements d\'Hiver 2026',
+                            location: 'Dressing',
+                            category: 'Vêtements',
+                            subPosition: 'Haut de l\'armoire principale',
+                            color: '#4f46e5',
+                            icon: 'fa-shirt',
+                            items: ['Manteau noir', 'Doudoune', 'Écharpe en laine', 'Gants de ski']
+                        }
+                    ];
+                    saveToStorage();
+                }
+            } catch (e) {
+                console.error("Erreur de lecture LocalStorage:", e);
+                storageBlocks = [];
+            }
+        }
+
+        function saveToStorage() {
+            try {
+                localStorage.setItem('mon_rangement_blocks', JSON.stringify(storageBlocks));
+            } catch (e) {
+                console.error("Erreur de sauvegarde LocalStorage:", e);
+            }
+        }
+
+        // --- AFFICHAGE / RENDU DES BLOCS ---
+        window.renderBlocks = function() {
+            const grid = document.getElementById('blocksGrid');
+            const emptyState = document.getElementById('emptyState');
+            const searchVal = document.getElementById('searchInput').value.toLowerCase().trim();
+
+            // Filtrage selon recherche et pilule de catégorie
+            const filtered = storageBlocks.filter(block => {
+                const matchesCategory = activeCategoryFilter === 'Toutes' || block.category === activeCategoryFilter;
+                
+                const titleMatch = block.title.toLowerCase().includes(searchVal);
+                const locMatch = block.location.toLowerCase().includes(searchVal);
+                const subMatch = (block.subPosition || '').toLowerCase().includes(searchVal);
+                const itemsMatch = block.items.some(item => item.toLowerCase().includes(searchVal));
+
+                const matchesSearch = !searchVal || titleMatch || locMatch || subMatch || itemsMatch;
+
+                return matchesCategory && matchesSearch;
+            });
+
+            // Mise à jour des compteurs
+            document.getElementById('statsCount').textContent = `${filtered.length} bloc(s) affiché(s)`;
+            const totalItemsCount = filtered.reduce((acc, b) => acc + (b.items ? b.items.length : 0), 0);
+            document.getElementById('itemsCount').textContent = `${totalItemsCount} objet(s) au total`;
+
+            if (filtered.length === 0) {
+                grid.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+
+            grid.innerHTML = filtered.map(block => `
+                <div class="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm hover:shadow-md transition duration-200 flex flex-col justify-between relative overflow-hidden group">
+                    <!-- Accent couleur sur le haut -->
+                    <div class="absolute top-0 left-0 right-0 h-1.5" style="background-color: ${block.color};"></div>
+                    
+                    <div>
+                        <!-- Header du bloc -->
+                        <div class="flex items-start justify-between gap-3 pt-1 mb-2">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0 shadow-sm" style="background-color: ${block.color}">
+                                    <i class="fa-solid ${block.icon} text-base"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-slate-900 text-sm leading-tight">${escapeHtml(block.title)}</h3>
+                                    <p class="text-[11px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
+                                        <i class="fa-solid fa-location-dot text-indigo-500"></i> ${escapeHtml(block.location)}
+                                        ${block.subPosition ? `• <span class="text-slate-400">${escapeHtml(block.subPosition)}</span>` : ''}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Actions : Éditer & Supprimer -->
+                            <div class="flex items-center gap-1">
+                                <button type="button" 
+                                        onclick="window.openEditModal('${block.id}'); event.stopPropagation();" 
+                                        ontouchend="window.openEditModal('${block.id}'); event.stopPropagation();"
+                                        class="touch-action-manipulation w-8 h-8 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center justify-center transition"
+                                        title="Éditer">
+                                    <i class="fa-solid fa-pen-to-square text-xs"></i>
+                                </button>
+                                
+                                <button type="button" 
+                                        onclick="window.promptDeleteBlock('${block.id}', event)" 
+                                        ontouchend="window.promptDeleteBlock('${block.id}', event)"
+                                        class="touch-action-manipulation w-8 h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 flex items-center justify-center transition"
+                                        title="Supprimer">
+                                    <i class="fa-solid fa-trash-can text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Tag de catégorie -->
+                        <div class="mb-3">
+                            <span class="inline-block px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-semibold tracking-wide uppercase">
+                                ${escapeHtml(block.category)}
+                            </span>
+                        </div>
+
+                        <!-- Liste des objets -->
+                        <div class="space-y-1">
+                            <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Contenu (${block.items ? block.items.length : 0}) :</p>
+                            <div class="flex flex-wrap gap-1.5">
+                                ${block.items && block.items.length > 0 
+                                    ? block.items.map(item => `
+                                        <span class="inline-flex items-center gap-1 bg-slate-50 border border-slate-100 text-slate-700 px-2 py-0.5 rounded-lg text-xs font-medium">
+                                            <i class="fa-solid fa-circle text-[4px] text-indigo-400"></i>
+                                            ${escapeHtml(item)}
+                                        </span>
+                                    `).join('')
+                                    : '<span class="text-xs text-slate-400 italic">Aucun objet répertorié</span>'
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        };
+
+        // --- FILTRES PAR CATÉGORIE ---
+        function renderCategoryPills() {
+            const categories = ["Toutes", "Vêtements", "Outillage", "Documents", "Électronique", "Jouets & Jeux", "Cuisine", "Décoration", "Livres", "Souvenirs", "Divers"];
+            const container = document.getElementById('categoryPills');
+
+            container.innerHTML = categories.map(cat => {
+                const isActive = activeCategoryFilter === cat;
+                return `
+                    <button onclick="window.setCategoryFilter('${cat}')" 
+                            class="touch-action-manipulation px-3 py-1.5 rounded-xl whitespace-nowrap transition font-medium ${
+                                isActive 
+                                ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-200' 
+                                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                            }">
+                        ${cat}
+                    </button>
+                `;
+            }).join('');
+        }
+
+        window.setCategoryFilter = function(cat) {
+            activeCategoryFilter = cat;
+            renderCategoryPills();
+            renderBlocks();
+        };
+
+        // --- SÉLECTEUR DE COULEURS ET ICÔNES DE LA MODALE ---
+        function initColorPicker() {
+            const grid = document.getElementById('colorGrid');
+            grid.innerHTML = COLORS.map(c => `
+                <button type="button" onclick="window.selectColor('${c}')" 
+                        class="color-btn w-6 h-6 rounded-full transition transform active:scale-95 border-2 ${selectedColor === c ? 'border-slate-800 scale-110 shadow' : 'border-transparent'}" 
+                        style="background-color: ${c};" data-color="${c}">
+                </button>
+            `).join('');
+        }
+
+        window.selectColor = function(c) {
+            selectedColor = c;
+            initColorPicker();
+        };
+
+        function initIconPicker() {
+            const grid = document.getElementById('iconGrid');
+            grid.innerHTML = ICONS.map(icon => `
+                <button type="button" onclick="window.selectIcon('${icon}')" 
+                        class="icon-btn w-7 h-7 rounded-lg flex items-center justify-center text-xs transition active:scale-95 ${selectedIcon === icon ? 'bg-indigo-600 text-white shadow' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'}"
+                        data-icon="${icon}">
+                    <i class="fa-solid ${icon}"></i>
+                </button>
+            `).join('');
+        }
+
+        window.selectIcon = function(icon) {
+            selectedIcon = icon;
+            initIconPicker();
+        };
+
+        // --- GESTION DE LA MODALE CRÉATION / ÉDITION ---
+        window.openCreateModal = function() {
+            document.getElementById('editBlockId').value = '';
+            document.getElementById('modalTitle').textContent = 'Nouveau Bloc de Rangement';
+            document.getElementById('blockTitle').value = '';
+            document.getElementById('blockLocation').value = 'Chambre';
+            document.getElementById('blockCategory').value = 'Vêtements';
+            document.getElementById('blockSubPosition').value = '';
+            document.getElementById('blockItems').value = '';
+            
+            selectedColor = COLORS[0];
+            selectedIcon = ICONS[0];
+            initColorPicker();
+            initIconPicker();
+
+            document.getElementById('blockModal').classList.remove('hidden');
+        };
+
+        window.openEditModal = function(id) {
+            const block = storageBlocks.find(b => b.id === id);
+            if (!block) return;
+
+            document.getElementById('editBlockId').value = block.id;
+            document.getElementById('modalTitle').textContent = 'Modifier le Bloc';
+            document.getElementById('blockTitle').value = block.title;
+            document.getElementById('blockLocation').value = block.location;
+            document.getElementById('blockCategory').value = block.category;
+            document.getElementById('blockSubPosition').value = block.subPosition || '';
+            document.getElementById('blockItems').value = block.items ? block.items.join(', ') : '';
+
+            selectedColor = block.color || COLORS[0];
+            selectedIcon = block.icon || ICONS[0];
+            initColorPicker();
+            initIconPicker();
+
+            document.getElementById('blockModal').classList.remove('hidden');
+        };
+
+        window.closeBlockModal = function() {
+            document.getElementById('blockModal').classList.add('hidden');
+        };
+
+        window.saveBlock = function() {
+            const title = document.getElementById('blockTitle').value.trim();
+            const location = document.getElementById('blockLocation').value;
+            const category = document.getElementById('blockCategory').value;
+            const subPosition = document.getElementById('blockSubPosition').value.trim();
+            const rawItems = document.getElementById('blockItems').value.trim();
+            const editId = document.getElementById('editBlockId').value;
+
+            if (!title) {
+                alert('Veuillez donner un nom ou un titre à ce bloc de rangement.');
+                return;
+            }
+
+            // Découpage du contenu
+            const items = rawItems 
+                ? rawItems.split(',').map(i => i.trim()).filter(i => i.length > 0)
+                : [];
+
+            if (editId) {
+                // Modification
+                const index = storageBlocks.findIndex(b => b.id === editId);
+                if (index !== -1) {
+                    storageBlocks[index] = {
+                        ...storageBlocks[index],
+                        title,
+                        location,
+                        category,
+                        subPosition,
+                        color: selectedColor,
+                        icon: selectedIcon,
+                        items
+                    };
+                }
+            } else {
+                // Création
+                const newBlock = {
+                    id: 'block-' + Date.now(),
+                    title,
+                    location,
+                    category,
+                    subPosition,
+                    color: selectedColor,
+                    icon: selectedIcon,
+                    items
+                };
+                storageBlocks.unshift(newBlock);
+            }
+
+            saveToStorage();
+            renderBlocks();
+            closeBlockModal();
+        };
+
+        // --- FUNCTION SUPPRESSION FIABILISÉE (POUBELLE) ---
+        window.promptDeleteBlock = function(id, e) {
+            if (e) {
+                e.stopPropagation();
+                e.preventDefault();
+            }
+            pendingDeleteId = id;
+
+            const confirmBtn = document.getElementById('btnConfirmDelete');
+            // Réassignation propre de l'événement
+            confirmBtn.onclick = function() {
+                window.executeDeleteBlock();
+            };
+
+            document.getElementById('confirmModal').classList.remove('hidden');
+        };
+
+        window.closeConfirmModal = function() {
+            pendingDeleteId = null;
+            document.getElementById('confirmModal').classList.add('hidden');
+        };
+
+        window.executeDeleteBlock = function() {
+            if (!pendingDeleteId) return;
+
+            // Suppression du tableau
+            storageBlocks = storageBlocks.filter(b => b.id !== pendingDeleteId);
+            
+            // Sauvegarde LocalStorage immédiate
+            saveToStorage();
+            
+            // Fermeture modale & Re-rendu
+            closeConfirmModal();
+            renderBlocks();
+        };
+
+        // --- BANNIÈRE DE DÉTECTION PWA ---
+        function checkPwaStatus() {
+            const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+            const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+            
+            if (isIos && !isStandalone) {
+                document.getElementById('pwaBanner').classList.remove('hidden');
+            }
+        }
+
+        window.dismissPwaBanner = function() {
+            document.getElementById('pwaBanner').classList.add('hidden');
+        };
+
+        // --- HELPER SANITIZATION ---
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
