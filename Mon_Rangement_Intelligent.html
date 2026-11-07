@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <!-- Zoom autorisé (important pour la malvoyance) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Mon Rangement Intelligent</title>
+
+    <!-- PWA & Apple Touch Icon -->
+    <link rel="apple-touch-icon" sizes="180x180" href="icon_4.png">
+    <link rel="icon" type="image/png" href="icon_4.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Mon Rangement">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* Taille de base réglable : tout le design (rem) s'adapte */
+        html { font-size: 20px; -webkit-text-size-adjust: 100%; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            line-height: 1.5;
+        }
+        .touch-action-manipulation { touch-action: manipulation; }
+        /* Champs : jamais sous 16px pour éviter le zoom automatique d'iOS */
+        input, select, textarea { font-size: 1rem !important; }
+        /* Focus bien visible */
+        button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+            outline: 4px solid #f59e0b;
+            outline-offset: 2px;
+        }
+        .glass-header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        @supports (padding: max(0px)) {
+            header { padding-top: max(0.75rem, env(safe-area-inset-top)); }
+            body { padding-bottom: max(6rem, env(safe-area-inset-bottom)); }
+        }
+    </style>
+</head>
+<body class="h-full text-slate-900 antialiased pb-24">
+
+    <!-- En-tête -->
+    <header class="sticky top-0 z-30 glass-header border-b-2 border-slate-200 px-4 py-3 shadow-sm">
+        <div class="max-w-4xl mx-auto space-y-3">
+            <div class="flex items-center gap-3">
+                <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center text-white shadow-md shrink-0">
+                    <i class="fa-solid fa-boxes-stacked text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-extrabold text-2xl text-slate-900 leading-tight">Mon Rangement</h1>
+                    <p class="text-base text-slate-700 font-medium">Organisation & Stockage</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button onclick="window.openCreateModal()" class="touch-action-manipulation flex-1 bg-indigo-700 active:bg-indigo-900 text-white font-bold text-lg px-4 min-h-[3.5rem] rounded-2xl shadow flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>Nouveau bloc</span>
+                </button>
+                <!-- Réglage taille du texte -->
+                <div class="flex items-center gap-1 bg-white border-2 border-slate-300 rounded-2xl p-1" role="group" aria-label="Taille du texte">
+                    <button onclick="window.changeFontSize(-1)" aria-label="Réduire le texte" class="touch-action-manipulation w-14 h-12 rounded-xl bg-slate-100 active:bg-slate-300 font-extrabold text-slate-900 text-base">A−</button>
+                    <button onclick="window.changeFontSize(1)" aria-label="Agrandir le texte" class="touch-action-manipulation w-14 h-12 rounded-xl bg-slate-100 active:bg-slate-300 font-extrabold text-slate-900 text-2xl">A+</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Bannière d'installation iOS -->
+    <div id="pwaBanner" class="hidden max-w-4xl mx-auto mt-4 mx-4 p-4 bg-indigo-50 border-2 border-indigo-200 rounded-2xl flex items-start justify-between gap-3 text-indigo-950 shadow-sm">
+        <div>
+            <p class="font-bold text-lg">Installer l'application</p>
+            <p class="text-base mt-1">Appuyez sur <i class="fa-solid fa-arrow-up-from-bracket px-1"></i> puis <strong>« Sur l'écran d'accueil »</strong>.</p>
+        </div>
+        <button onclick="window.dismissPwaBanner()" aria-label="Fermer" class="touch-action-manipulation w-12 h-12 shrink-0 rounded-full bg-white text-indigo-800 flex items-center justify-center">
+            <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+    </div>
+
+    <main class="max-w-4xl mx-auto px-4 pt-4 space-y-5">
+
+        <!-- Recherche et filtres -->
+        <div class="space-y-3">
+            <div class="relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 text-lg"></i>
+                <input type="search" id="searchInput" oninput="window.renderBlocks()" placeholder="Rechercher un objet, un bloc…"
+                       class="w-full bg-white border-2 border-slate-400 pl-12 pr-4 min-h-[3.5rem] rounded-2xl shadow-sm focus:outline-none focus:border-indigo-700 text-slate-900 placeholder-slate-500">
+            </div>
+
+            <div id="categoryPills" class="flex flex-wrap gap-2"></div>
+        </div>
+
+        <!-- Statistiques -->
+        <div class="flex flex-col gap-1 px-1 text-base text-slate-700 font-semibold">
+            <span id="statsCount">0 bloc affiché</span>
+            <span id="itemsCount">0 objet au total</span>
+        </div>
+
+        <!-- Liste des blocs -->
+        <div id="blocksGrid" class="grid grid-cols-1 md:grid-cols-2 gap-5"></div>
+
+        <!-- État vide -->
+        <div id="emptyState" class="hidden text-center py-12 px-4 space-y-4">
+            <div class="w-24 h-24 bg-slate-200 text-slate-600 rounded-3xl mx-auto flex items-center justify-center text-5xl">
+                <i class="fa-solid fa-box-open"></i>
+            </div>
+            <h3 id="emptyTitle" class="font-bold text-2xl text-slate-900">Aucun bloc de rangement</h3>
+            <p id="emptyText" class="text-lg text-slate-700 max-w-sm mx-auto">Créez votre premier bloc pour organiser vos objets par lieu et par catégorie.</p>
+            <button id="emptyCreateBtn" onclick="window.openCreateModal()" class="touch-action-manipulation inline-flex items-center gap-2 bg-indigo-700 active:bg-indigo-900 text-white font-bold text-lg px-6 min-h-[3.5rem] rounded-2xl shadow">
+                <i class="fa-solid fa-plus"></i> Créer mon premier bloc
+            </button>
+        </div>
+    </main>
+
+    <!-- Modale création / édition -->
+    <div id="blockModal" class="fixed inset-0 bg-slate-900/70 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
+        <div class="bg-white w-full sm:max-w-xl rounded-t-3xl sm:rounded-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+
+            <div class="px-5 py-4 border-b-2 border-slate-200 flex items-center justify-between bg-slate-50">
+                <h2 id="modalTitle" class="font-extrabold text-slate-900 text-xl">Nouveau bloc</h2>
+                <button onclick="window.closeBlockModal()" aria-label="Fermer" class="touch-action-manipulation w-12 h-12 rounded-full bg-slate-200 text-slate-800 flex items-center justify-center active:bg-slate-300">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <div class="p-5 overflow-y-auto space-y-6">
+                <input type="hidden" id="editBlockId">
+
+                <div>
+                    <label for="blockTitle" class="block font-bold text-slate-900 text-lg mb-2">Nom du bloc / carton *</label>
+                    <input type="text" id="blockTitle" placeholder="Ex : Vêtements d'hiver"
+                           class="w-full bg-white border-2 border-slate-400 rounded-xl px-4 min-h-[3.5rem] focus:outline-none focus:border-indigo-700 placeholder-slate-500">
+                </div>
+
+                <div>
+                    <label for="blockLocation" class="block font-bold text-slate-900 text-lg mb-2">Emplacement / pièce *</label>
+                    <select id="blockLocation" class="w-full bg-white border-2 border-slate-400 rounded-xl px-4 min-h-[3.5rem] focus:outline-none focus:border-indigo-700">
+                        <option value="Chambre">Chambre</option>
+                        <option value="Garage">Garage</option>
+                        <option value="Cave">Cave</option>
+                        <option value="Salon">Salon</option>
+                        <option value="Cuisine">Cuisine</option>
+                        <option value="Grenier">Grenier</option>
+                        <option value="Bureau">Bureau</option>
+                        <option value="Dressing">Dressing</option>
+                        <option value="Salle de bain">Salle de bain</option>
+                        <option value="Autre">Autre</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="blockCategory" class="block font-bold text-slate-900 text-lg mb-2">Catégorie d'objets *</label>
+                    <select id="blockCategory" class="w-full bg-white border-2 border-slate-400 rounded-xl px-4 min-h-[3.5rem] focus:outline-none focus:border-indigo-700">
+                        <option value="Vêtements">Vêtements</option>
+                        <option value="Outillage">Outillage</option>
+                        <option value="Documents">Documents</option>
+                        <option value="Électronique">Électronique</option>
+                        <option value="Jouets & Jeux">Jouets & Jeux</option>
+                        <option value="Cuisine">Cuisine</option>
+                        <option value="Décoration">Décoration</option>
+                        <option value="Livres">Livres</option>
+                        <option value="Souvenirs">Souvenirs</option>
+                        <option value="Divers">Divers</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="blockSubPosition" class="block font-bold text-slate-900 text-lg mb-2">Position précise</label>
+                    <input type="text" id="blockSubPosition" placeholder="Ex : Étagère du haut, sous le lit…"
+                           class="w-full bg-white border-2 border-slate-400 rounded-xl px-4 min-h-[3.5rem] focus:outline-none focus:border-indigo-700 placeholder-slate-500">
+                </div>
+
+                <div>
+                    <span class="block font-bold text-slate-900 text-lg mb-2">Couleur du bloc</span>
+                    <div id="colorGrid" class="grid grid-cols-5 gap-3"></div>
+                </div>
+
+                <div>
+                    <span class="block font-bold text-slate-900 text-lg mb-2">Icône</span>
+                    <div id="iconGrid" class="grid grid-cols-5 gap-3"></div>
+                </div>
+
+                <div>
+                    <label for="blockItems" class="block font-bold text-slate-900 text-lg mb-2">Contenu du bloc</label>
+                    <p class="text-base text-slate-700 mb-2">Séparez les objets par des virgules.</p>
+                    <textarea id="blockItems" rows="4" placeholder="Ex : Pulls, manteaux, écharpe rouge, gants…"
+                              class="w-full bg-white border-2 border-slate-400 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-700 placeholder-slate-500"></textarea>
+                </div>
+            </div>
+
+            <div class="p-4 border-t-2 border-slate-200 flex items-center gap-3 bg-slate-50">
+                <button type="button" onclick="window.closeBlockModal()" class="touch-action-manipulation flex-1 min-h-[3.5rem] rounded-2xl border-2 border-slate-400 font-bold text-slate-800 text-lg active:bg-slate-200">
+                    Annuler
+                </button>
+                <button type="button" onclick="window.saveBlock()" class="touch-action-manipulation flex-[1.4] min-h-[3.5rem] rounded-2xl bg-indigo-700 active:bg-indigo-900 text-white font-bold text-lg shadow">
+                    Enregistrer
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale de confirmation de suppression -->
+    <div id="confirmModal" class="fixed inset-0 bg-slate-900/70 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white w-full max-w-sm rounded-3xl p-6 text-center shadow-2xl space-y-5">
+            <div class="w-20 h-20 bg-red-100 text-red-700 rounded-full mx-auto flex items-center justify-center text-4xl">
+                <i class="fa-solid fa-trash-can"></i>
+            </div>
+            <div>
+                <h3 class="font-extrabold text-slate-900 text-2xl">Supprimer ce bloc ?</h3>
+                <p id="confirmName" class="text-lg font-semibold text-slate-900 mt-2"></p>
+                <p class="text-base text-slate-700 mt-2">Cette action est définitive.</p>
+            </div>
+            <div class="flex flex-col gap-3">
+                <button id="btnConfirmDelete" class="touch-action-manipulation min-h-[3.5rem] rounded-2xl bg-red-700 active:bg-red-900 text-white text-lg font-bold shadow">
+                    Oui, supprimer
+                </button>
+                <button onclick="window.closeConfirmModal()" class="touch-action-manipulation min-h-[3.5rem] rounded-2xl border-2 border-slate-400 text-lg font-bold text-slate-800 active:bg-slate-200">
+                    Non, annuler
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- PALETTES ---
+        const COLORS = [
+            "#4338ca", "#1d4ed8", "#0369a1", "#0e7490", "#0f766e",
+            "#15803d", "#4d7c0f", "#a16207", "#b45309", "#c2410c",
+            "#b91c1c", "#be123c", "#be185d", "#a21caf", "#7e22ce",
+            "#6d28d9", "#475569", "#334155", "#1e293b", "#0f172a"
+        ];
+
+        const ICONS = [
+            "fa-box", "fa-boxes-stacked", "fa-shirt", "fa-wrench", "fa-folder-open",
+            "fa-laptop", "fa-gamepad", "fa-utensils", "fa-couch", "fa-book",
+            "fa-palette", "fa-suitcase", "fa-gem", "fa-plug", "fa-car",
+            "fa-bicycle", "fa-glasses", "fa-shoe-prints", "fa-pump-soap", "fa-key"
+        ];
+
+        // Tailles de texte (px de base) : A− / A+
+        const FONT_SIZES = [18, 20, 23, 26, 30];
+        let fontLevel = 1;
+
+        // --- ÉTAT ---
+        const STORAGE_KEY = 'mon_rangement_blocks';
+        const FONT_KEY = 'mon_rangement_fontlevel';
+        let storageBlocks = [];
+        let selectedColor = COLORS[0];
+        let selectedIcon = ICONS[0];
+        let activeCategoryFilter = "Toutes";
+        let pendingDeleteId = null;
+
+        window.onload = function() {
+            loadFontSize();
+            loadStorageData();
+            initColorPicker();
+            initIconPicker();
+            renderCategoryPills();
+            renderBlocks();
+            checkPwaStatus();
+        };
+
+        // --- TAILLE DU TEXTE ---
+        function applyFontSize() {
+            document.documentElement.style.fontSize = FONT_SIZES[fontLevel] + 'px';
+        }
+        function loadFontSize() {
+            try {
+                const saved = parseInt(localStorage.getItem(FONT_KEY), 10);
+                if (!isNaN(saved) && saved >= 0 && saved < FONT_SIZES.length) fontLevel = saved;
+            } catch (e) {}
+            applyFontSize();
+        }
+        window.changeFontSize = function(delta) {
+            fontLevel = Math.min(FONT_SIZES.length - 1, Math.max(0, fontLevel + delta));
+            applyFontSize();
+            try { localStorage.setItem(FONT_KEY, String(fontLevel)); } catch (e) {}
+        };
+
+        // --- STOCKAGE : démarre vide ---
+        function loadStorageData() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                storageBlocks = saved ? JSON.parse(saved) : [];
+                // Supprime les anciens exemples de démonstration s'ils existent
+                const before = storageBlocks.length;
+                storageBlocks = storageBlocks.filter(b => b.id !== 'demo-1' && b.id !== 'demo-2');
+                if (storageBlocks.length !== before) saveToStorage();
+            } catch (e) {
+                console.error("Erreur de lecture :", e);
+                storageBlocks = [];
+            }
+        }
+
+        function saveToStorage() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(storageBlocks));
+            } catch (e) {
+                console.error("Erreur de sauvegarde :", e);
+            }
+        }
+
+        // --- AFFICHAGE ---
+        window.renderBlocks = function() {
+            const grid = document.getElementById('blocksGrid');
+            const emptyState = document.getElementById('emptyState');
+            const searchVal = document.getElementById('searchInput').value.toLowerCase().trim();
+
+            const filtered = storageBlocks.filter(block => {
+                const matchesCategory = activeCategoryFilter === 'Toutes' || block.category === activeCategoryFilter;
+                const matchesSearch = !searchVal ||
+                    block.title.toLowerCase().includes(searchVal) ||
+                    block.location.toLowerCase().includes(searchVal) ||
+                    (block.subPosition || '').toLowerCase().includes(searchVal) ||
+                    (block.items || []).some(item => item.toLowerCase().includes(searchVal));
+                return matchesCategory && matchesSearch;
+            });
+
+            const totalItems = filtered.reduce((acc, b) => acc + (b.items ? b.items.length : 0), 0);
+            document.getElementById('statsCount').textContent = `${filtered.length} bloc${filtered.length > 1 ? 's' : ''} affiché${filtered.length > 1 ? 's' : ''}`;
+            document.getElementById('itemsCount').textContent = `${totalItems} objet${totalItems > 1 ? 's' : ''} au total`;
+
+            if (filtered.length === 0) {
+                grid.innerHTML = '';
+                const noBlocksAtAll = storageBlocks.length === 0;
+                document.getElementById('emptyTitle').textContent = noBlocksAtAll ? 'Aucun bloc de rangement' : 'Aucun résultat';
+                document.getElementById('emptyText').textContent = noBlocksAtAll
+                    ? 'Créez votre premier bloc pour organiser vos objets par lieu et par catégorie.'
+                    : 'Essayez un autre mot ou une autre catégorie.';
+                document.getElementById('emptyCreateBtn').classList.toggle('hidden', !noBlocksAtAll);
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+
+            grid.innerHTML = filtered.map(block => `
+                <div class="bg-white border-2 border-slate-300 rounded-3xl p-5 shadow-sm flex flex-col relative overflow-hidden">
+                    <div class="absolute top-0 left-0 right-0 h-2.5" style="background-color: ${block.color};"></div>
+
+                    <div class="flex items-start gap-3 pt-2 mb-3">
+                        <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-white shrink-0 shadow-sm" style="background-color: ${block.color}">
+                            <i class="fa-solid ${block.icon} text-2xl"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <h3 class="font-extrabold text-slate-900 text-xl leading-tight break-words">${escapeHtml(block.title)}</h3>
+                            <p class="text-base text-slate-800 font-semibold mt-1">
+                                <i class="fa-solid fa-location-dot text-indigo-700"></i> ${escapeHtml(block.location)}
+                            </p>
+                            ${block.subPosition ? `<p class="text-base text-slate-700 break-words">${escapeHtml(block.subPosition)}</p>` : ''}
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <span class="inline-block px-3 py-1 rounded-lg bg-slate-200 text-slate-900 text-sm font-bold uppercase tracking-wide">
+                            ${escapeHtml(block.category)}
+                        </span>
+                    </div>
+
+                    <div class="space-y-2 mb-5">
+                        <p class="text-base font-bold text-slate-800">Contenu (${block.items ? block.items.length : 0}) :</p>
+                        <div class="flex flex-wrap gap-2">
+                            ${block.items && block.items.length > 0
+                                ? block.items.map(item => `
+                                    <span class="inline-block bg-slate-100 border border-slate-300 text-slate-900 px-3 py-1.5 rounded-xl text-base font-medium break-words">
+                                        ${escapeHtml(item)}
+                                    </span>`).join('')
+                                : '<span class="text-base text-slate-600 italic">Aucun objet répertorié</span>'
+                            }
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3 mt-auto">
+                        <button type="button" onclick="window.openEditModal('${block.id}')"
+                                class="touch-action-manipulation flex-1 min-h-[3.25rem] rounded-xl bg-slate-200 text-slate-900 active:bg-slate-300 flex items-center justify-center gap-2 font-bold text-base">
+                            <i class="fa-solid fa-pen-to-square"></i> Modifier
+                        </button>
+                        <button type="button" onclick="window.promptDeleteBlock('${block.id}', event)"
+                                class="touch-action-manipulation flex-1 min-h-[3.25rem] rounded-xl bg-red-100 text-red-800 active:bg-red-200 flex items-center justify-center gap-2 font-bold text-base">
+                            <i class="fa-solid fa-trash-can"></i> Supprimer
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        };
+
+        // --- FILTRES ---
+        function renderCategoryPills() {
+            const categories = ["Toutes", "Vêtements", "Outillage", "Documents", "Électronique", "Jouets & Jeux", "Cuisine", "Décoration", "Livres", "Souvenirs", "Divers"];
+            document.getElementById('categoryPills').innerHTML = categories.map(cat => {
+                const isActive = activeCategoryFilter === cat;
+                return `
+                    <button onclick="window.setCategoryFilter('${cat}')"
+                            class="touch-action-manipulation px-4 min-h-[3rem] rounded-xl font-bold text-base transition ${
+                                isActive
+                                ? 'bg-indigo-700 text-white shadow'
+                                : 'bg-white border-2 border-slate-400 text-slate-900 active:bg-slate-200'
+                            }">${cat}</button>`;
+            }).join('');
+        }
+
+        window.setCategoryFilter = function(cat) {
+            activeCategoryFilter = cat;
+            renderCategoryPills();
+            renderBlocks();
+        };
+
+        // --- COULEURS & ICÔNES ---
+        function initColorPicker() {
+            document.getElementById('colorGrid').innerHTML = COLORS.map(c => `
+                <button type="button" onclick="window.selectColor('${c}')" aria-label="Couleur ${c}"
+                        class="touch-action-manipulation h-12 rounded-xl flex items-center justify-center text-white border-4 ${selectedColor === c ? 'border-amber-400 ring-2 ring-slate-900' : 'border-transparent'}"
+                        style="background-color: ${c};">
+                    ${selectedColor === c ? '<i class="fa-solid fa-check text-lg"></i>' : ''}
+                </button>
+            `).join('');
+        }
+
+        window.selectColor = function(c) {
+            selectedColor = c;
+            initColorPicker();
+        };
+
+        function initIconPicker() {
+            document.getElementById('iconGrid').innerHTML = ICONS.map(icon => `
+                <button type="button" onclick="window.selectIcon('${icon}')"
+                        class="touch-action-manipulation h-14 rounded-xl flex items-center justify-center text-xl ${selectedIcon === icon ? 'bg-indigo-700 text-white ring-2 ring-slate-900' : 'bg-white border-2 border-slate-400 text-slate-800 active:bg-slate-200'}">
+                    <i class="fa-solid ${icon}"></i>
+                </button>
+            `).join('');
+        }
+
+        window.selectIcon = function(icon) {
+            selectedIcon = icon;
+            initIconPicker();
+        };
+
+        // --- MODALE CRÉATION / ÉDITION ---
+        window.openCreateModal = function() {
+            document.getElementById('editBlockId').value = '';
+            document.getElementById('modalTitle').textContent = 'Nouveau bloc';
+            document.getElementById('blockTitle').value = '';
+            document.getElementById('blockLocation').value = 'Chambre';
+            document.getElementById('blockCategory').value = 'Vêtements';
+            document.getElementById('blockSubPosition').value = '';
+            document.getElementById('blockItems').value = '';
+            selectedColor = COLORS[0];
+            selectedIcon = ICONS[0];
+            initColorPicker();
+            initIconPicker();
+            document.getElementById('blockModal').classList.remove('hidden');
+        };
+
+        window.openEditModal = function(id) {
+            const block = storageBlocks.find(b => b.id === id);
+            if (!block) return;
+            document.getElementById('editBlockId').value = block.id;
+            document.getElementById('modalTitle').textContent = 'Modifier le bloc';
+            document.getElementById('blockTitle').value = block.title;
+            document.getElementById('blockLocation').value = block.location;
+            document.getElementById('blockCategory').value = block.category;
+            document.getElementById('blockSubPosition').value = block.subPosition || '';
+            document.getElementById('blockItems').value = block.items ? block.items.join(', ') : '';
+            selectedColor = block.color || COLORS[0];
+            selectedIcon = block.icon || ICONS[0];
+            initColorPicker();
+            initIconPicker();
+            document.getElementById('blockModal').classList.remove('hidden');
+        };
+
+        window.closeBlockModal = function() {
+            document.getElementById('blockModal').classList.add('hidden');
+        };
+
+        window.saveBlock = function() {
+            const title = document.getElementById('blockTitle').value.trim();
+            const location = document.getElementById('blockLocation').value;
+            const category = document.getElementById('blockCategory').value;
+            const subPosition = document.getElementById('blockSubPosition').value.trim();
+            const rawItems = document.getElementById('blockItems').value.trim();
+            const editId = document.getElementById('editBlockId').value;
+
+            if (!title) {
+                alert('Veuillez donner un nom à ce bloc de rangement.');
+                return;
+            }
+
+            const items = rawItems
+                ? rawItems.split(',').map(i => i.trim()).filter(i => i.length > 0)
+                : [];
+
+            if (editId) {
+                const index = storageBlocks.findIndex(b => b.id === editId);
+                if (index !== -1) {
+                    storageBlocks[index] = { ...storageBlocks[index], title, location, category, subPosition, color: selectedColor, icon: selectedIcon, items };
+                }
+            } else {
+                storageBlocks.unshift({
+                    id: 'block-' + Date.now(),
+                    title, location, category, subPosition,
+                    color: selectedColor,
+                    icon: selectedIcon,
+                    items
+                });
+            }
+
+            saveToStorage();
+            renderBlocks();
+            closeBlockModal();
+        };
+
+        // --- SUPPRESSION ---
+        window.promptDeleteBlock = function(id, e) {
+            if (e) { e.stopPropagation(); e.preventDefault(); }
+            const block = storageBlocks.find(b => b.id === id);
+            if (!block) return;
+            pendingDeleteId = id;
+            document.getElementById('confirmName').textContent = block.title;
+            document.getElementById('btnConfirmDelete').onclick = function() {
+                window.executeDeleteBlock();
+            };
+            document.getElementById('confirmModal').classList.remove('hidden');
+        };
+
+        window.closeConfirmModal = function() {
+            pendingDeleteId = null;
+            document.getElementById('confirmModal').classList.add('hidden');
+        };
+
+        window.executeDeleteBlock = function() {
+            if (!pendingDeleteId) return;
+            storageBlocks = storageBlocks.filter(b => b.id !== pendingDeleteId);
+            saveToStorage();
+            closeConfirmModal();
+            renderBlocks();
+        };
+
+        // --- BANNIÈRE PWA ---
+        function checkPwaStatus() {
+            const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+            const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+            if (isIos && !isStandalone) {
+                document.getElementById('pwaBanner').classList.remove('hidden');
+            }
+        }
+
+        window.dismissPwaBanner = function() {
+            document.getElementById('pwaBanner').classList.add('hidden');
+        };
+
+        // --- SÉCURITÉ ---
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
